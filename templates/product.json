@@ -45,6 +45,12 @@
             "show_gift_card_recipient": false
           }
         },
+        "cross_sell": {
+          "type": "cross_sell",
+          "settings": {
+            "heading": "Pairs with"
+          }
+        },
         "description": {
           "type": "description",
           "settings": {}
@@ -64,6 +70,7 @@
         "quantity_selector",
         "price",
         "buy_buttons",
+        "cross_sell",
         "description",
         "share"
       ],

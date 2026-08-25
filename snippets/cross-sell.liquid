@@ -1,0 +1,185 @@
+{% comment %}
+  Renders a "Pairs with" cross-sell carousel for the products selected in the
+  product's custom.pairs_with metafield (Product list).
+
+  Accepts:
+  - product: {Object} product object.
+  - block: {Object} passing the block information.
+
+  Usage:
+  {% render 'cross-sell', block: block, product: product %}
+{% endcomment %}
+
+{%- liquid
+  assign pairs = product.metafields.custom.pairs_with.value
+  assign heading = block.settings.heading | default: 'Pairs with'
+  assign heading_id = 'CrossSellHeading-' | append: block.id
+  assign track_id = 'CrossSellTrack-' | append: block.id
+
+  assign pairs_count = 0
+  for pair_product in pairs
+    if pair_product.id != product.id and pair_product.available
+      assign pairs_count = pairs_count | plus: 1
+    endif
+  endfor
+-%}
+
+{%- if pairs_count == 0 -%}
+  {%- if request.design_mode -%}
+    {{ 'component-cross-sell.css' | asset_url | stylesheet_tag }}
+    <div class="cross-sell cross-sell--empty" {{ block.shopify_attributes }}>
+      <p class="cross-sell__empty-text">
+        Assign products to this product's "Pairs with" metafield (custom.pairs_with) to show them here.
+      </p>
+    </div>
+  {%- endif -%}
+{%- else -%}
+  {{ 'component-cross-sell.css' | asset_url | stylesheet_tag }}
+  <script src="{{ 'cross-sell.js' | asset_url }}" defer="defer"></script>
+
+  <section
+    class="cross-sell quick-add-hidden"
+    aria-labelledby="{{ heading_id }}"
+    {{ block.shopify_attributes }}
+  >
+    <cross-sell-carousel class="cross-sell__carousel">
+      <div class="cross-sell__header">
+        <h2 id="{{ heading_id }}" class="cross-sell__heading">{{ heading }}</h2>
+
+        <div class="cross-sell__controls no-js-hidden" data-cross-sell-controls>
+          <button
+            type="button"
+            class="cross-sell__arrow cross-sell__arrow--prev"
+            aria-label="Scroll to previous product"
+            aria-controls="{{ track_id }}"
+            data-cross-sell-direction="prev"
+          >
+            <svg class="cross-sell__arrow-icon" viewBox="0 0 24 16" aria-hidden="true" focusable="false">
+              <path d="M16 1.5 22.5 8 16 14.5M22.5 8H0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="cross-sell__arrow"
+            aria-label="Scroll to next product"
+            aria-controls="{{ track_id }}"
+            data-cross-sell-direction="next"
+          >
+            <svg class="cross-sell__arrow-icon" viewBox="0 0 24 16" aria-hidden="true" focusable="false">
+              <path d="M16 1.5 22.5 8 16 14.5M22.5 8H0.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <ul id="{{ track_id }}" class="cross-sell__track list-unstyled" data-cross-sell-track>
+        {%- for pair_product in pairs -%}
+          {%- if pair_product.id == product.id or pair_product.available == false -%}
+            {%- continue -%}
+          {%- endif -%}
+
+          {%- liquid
+            assign single_option = false
+            if pair_product.options.size == 1
+              assign single_option = true
+            endif
+
+            assign picker_label = 'Options'
+            if single_option
+              assign picker_label = pair_product.options.first
+            endif
+
+            assign select_id = 'CrossSellVariant-' | append: block.id | append: '-' | append: pair_product.id
+          -%}
+
+          <li class="cross-sell__slide" data-cross-sell-slide>
+            <cross-sell-item
+              class="cross-sell__card"
+              data-select-error="Choose {{ picker_label | downcase | escape }}"
+            >
+              <div class="cross-sell__media">
+                {%- if pair_product.featured_image != blank -%}
+                  {{
+                    pair_product.featured_image
+                    | image_url: width: 640
+                    | image_tag:
+                      loading: 'lazy',
+                      class: 'cross-sell__image',
+                      widths: '120, 160, 240, 320, 480, 640',
+                      sizes: '(min-width: 750px) 14rem, 34vw',
+                      alt: pair_product.featured_image.alt | escape
+                  }}
+                {%- else -%}
+                  {{ 'product-1' | placeholder_svg_tag: 'cross-sell__image placeholder-svg' }}
+                {%- endif -%}
+              </div>
+
+              <div class="cross-sell__details">
+                <a class="cross-sell__title" href="{{ pair_product.url }}">{{ pair_product.title | escape }}</a>
+
+                {%- render 'price', product: pair_product -%}
+
+                <div class="cross-sell__actions">
+                  {%- if pair_product.has_only_default_variant -%}
+                    <input
+                      type="hidden"
+                      value="{{ pair_product.selected_or_first_available_variant.id }}"
+                      data-cross-sell-variant
+                    >
+                  {%- else -%}
+                    <div class="cross-sell__select">
+                      <label class="visually-hidden" for="{{ select_id }}">
+                        {{- picker_label | escape }} for {{ pair_product.title | escape -}}
+                      </label>
+                      <select id="{{ select_id }}" class="cross-sell__select-input" data-cross-sell-variant>
+                        <option value="" selected disabled>{{ picker_label | escape }}</option>
+                        {%- for variant in pair_product.variants -%}
+                          <option
+                            value="{{ variant.id }}"
+                            {% if variant.available == false %}
+                              disabled
+                            {% endif %}
+                          >
+                            {%- if single_option -%}
+                              {{ variant.option1 | escape }}
+                            {%- else -%}
+                              {{ variant.title | escape }}
+                            {%- endif -%}
+                          </option>
+                        {%- endfor -%}
+                      </select>
+                      {% render 'icon-caret' %}
+                    </div>
+                  {%- endif -%}
+
+                  <button
+                    type="button"
+                    class="cross-sell__add{% if pair_product.has_only_default_variant %} cross-sell__add--ready{% endif %}"
+                    data-cross-sell-add
+                    data-default-text="Add"
+                    data-added-text="Added"
+                  >
+                    <span aria-live="polite">Add</span>
+                    <div class="loading-overlay__spinner hidden">
+                      <svg
+                        aria-hidden="true"
+                        focusable="false"
+                        class="spinner"
+                        viewBox="0 0 66 66"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <circle class="path" fill="none" stroke-width="6" cx="33" cy="33" r="30"></circle>
+                      </svg>
+                    </div>
+                  </button>
+                </div>
+
+                <p class="cross-sell__error" role="alert" data-cross-sell-error hidden></p>
+              </div>
+            </cross-sell-item>
+          </li>
+        {%- endfor -%}
+      </ul>
+    </cross-sell-carousel>
+  </section>
+{%- endif -%}

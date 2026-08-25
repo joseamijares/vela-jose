@@ -312,6 +312,8 @@
               {% render 'product-variant-picker', product: product, block: block, product_form_id: product_form_id %}
             {%- when 'buy_buttons' -%}
               {%- render 'buy-buttons', block: block, product: product, product_form_id: product_form_id, section_id: section.id, show_pickup_availability: true -%}
+            {%- when 'cross_sell' -%}
+              {% render 'cross-sell', block: block, product: product %}
             {%- when 'rating' -%}
               {%- if product.metafields.reviews.rating.value != blank -%}
                 {% liquid
@@ -739,6 +741,23 @@
           "default": false,
           "label": "t:sections.main-product.blocks.buy_buttons.settings.show_gift_card_recipient.label",
           "info": "t:sections.main-product.blocks.buy_buttons.settings.show_gift_card_recipient.info"
+        }
+      ]
+    },
+    {
+      "type": "cross_sell",
+      "name": "Pairs with",
+      "limit": 1,
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Pairs with"
+        },
+        {
+          "type": "paragraph",
+          "content": "Products come from this product's \"Pairs with\" metafield (custom.pairs_with)."
         }
       ]
     },
